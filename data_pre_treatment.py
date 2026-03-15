@@ -21,12 +21,11 @@ def _to_dataframe(path):
         "PC": 11,
         "PLY": 12,
     }
-    if path.split("/")[1] == "test":
+    if "label" in df.columns:
+        df["label_idx"] = df["label"].map(label_map)
+    else:
         df["label"] = "undefined"
-
-    df["label_idx"] = df["label"].map(
-        lambda x: -1 if x == "undefined" else label_map[x]
-    )
+        df["label_idx"] = -1
     return df
 
 
