@@ -49,7 +49,7 @@ class WhiteBloodCellDataset(Dataset):
         return image, label
 
 
-def load_data(train_path, test_path):
+def load_data(train_df_path, test_df_path, train_data_path, test_data_path):
     # Resize to 224x224 for ResNet
     data_transforms = transforms.Compose(
         [
@@ -62,13 +62,13 @@ def load_data(train_path, test_path):
 
     # Datasets
     train_set = WhiteBloodCellDataset(
-        dataframe=_to_dataframe(train_path),
-        path="/Data/train/",
+        dataframe=_to_dataframe(train_df_path),
+        path=train_data_path,
         transform=data_transforms,
     )
     test_set = WhiteBloodCellDataset(
-        dataframe=_to_dataframe(test_path),
-        path="/Data/test/",
+        dataframe=_to_dataframe(test_df_path),
+        path=test_data_path,
         transform=data_transforms,
     )
 
