@@ -25,7 +25,7 @@ num_epochs = 30
 patience = 5
 
 # Train
-train_model(
+history = train_model(
     model, device, train_loader, val_loader, criterion, optimizer, num_epochs, patience
 )
 model.load_state_dict(torch.load("best_white_cell_model.pth"))
@@ -58,3 +58,6 @@ test_df = pd.read_csv(test_csv)
 test_df["label"] = predictions
 test_df.to_csv("test_prediction.csv", index=False)
 print("Model tested !")
+
+plot_training_curve(history["train_loss"], history["val_f1"])
+plot_confusion_matrix(model, device, val_loader, list(label_map.keys()))
