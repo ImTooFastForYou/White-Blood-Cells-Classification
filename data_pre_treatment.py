@@ -1,7 +1,9 @@
 import pandas as pd
+import torch
 from PIL import Image
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torchvision import transforms
+from sklearn.model_selection import train_test_split
 
 
 def _to_dataframe(path):
@@ -49,30 +51,64 @@ class WhiteBloodCellDataset(Dataset):
 
 
 def load_data(train_df_path, test_df_path, train_data_path, test_data_path):
-    # Resize to 224x224 for ResNet
-    data_transforms = transforms.Compose(
+    # Resize to 224x224 for ResNet + Data Augmentation
+    train_transforms = transforms.Compose(
         [
             transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.5),
+            transforms.RandomRotation(degrees=180),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ]
     )
 
+    val_test_transforms = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]
+    )
+
+    df_full_train = _to_dataframe(train_df_path)
+    df_test = _to_dataframe(test_df_path)
+
+    df_train, df_val = train_test_split(
+        df_full_train,
+        test_size=0.20,
+        random_state=0,
+        stratify=df_full_train["label_idx"],
+    )
+
     # Datasets
     train_set = WhiteBloodCellDataset(
-        dataframe=_to_dataframe(train_df_path),
+        dataframe=df_train,
         path=train_data_path,
-        transform=data_transforms,
+        transform=train_transforms,
+    )
+    val_set = WhiteBloodCellDataset(
+        dataframe=df_val,
+        path=train_data_path,
+        transform=val_test_transforms,
     )
     test_set = WhiteBloodCellDataset(
-        dataframe=_to_dataframe(test_df_path),
+        dataframe=df_test,
         path=test_data_path,
-        transform=data_transforms,
+        transform=val_test_transforms,
+    )
+    # Sampler
+    counts = df_train["label_idx"].value_counts().sort_index().values
+    weights = 1.0 / counts
+    samples_weights = torch.from_numpy(weights[df_train["label_idx"].values]).double()
+
+    sampler = WeightedRandomSampler(
+        weights=samples_weights, num_samples=len(samples_weights), replacement=True
     )
 
     # DataLoaders
-    train_loader = DataLoader(train_set, batch_size=32, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=32, sampler=sampler)
+    val_loader = DataLoader(val_set, batch_size=32, shuffle=False)
     test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
 
-    return train_loader, test_loader
+    return train_loader, val_loader, test_loader
