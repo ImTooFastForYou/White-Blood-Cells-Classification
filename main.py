@@ -2,14 +2,16 @@ from data_pre_treatment import *
 from white_cells_model import *
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Utilisation de : {device}")
+print(f"Using : {device}")
 
 # Loading data
 train_csv = "Data/train_metadata.csv"
 test_csv = "Data/test_metadata.csv"
 train_dir = "Data/train/"
 test_dir = "Data/test/"
-train_loader, test_loader = load_data(train_csv, test_csv, train_dir, test_dir)
+train_loader, val_loader, test_loader = load_data(
+    train_csv, test_csv, train_dir, test_dir
+)
 print("Data loaded !")
 
 # Model
@@ -17,19 +19,24 @@ model = get_model()
 model = model.to(device)
 
 # Parameters
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
-num_epochs = 10
+num_epochs = 30
+patience = 5
 
 # Train
-train_model(model, device, train_loader, criterion, optimizer, num_epochs)
-torch.save(model.state_dict(), "white_cell_classifier.pth")
+train_model(
+    model, device, train_loader, val_loader, criterion, optimizer, num_epochs, patience
+)
+model.load_state_dict(torch.load("best_white_cell_model.pth"))
 print("Model saved !")
 
-# Test
-predictions = test_model(model, device, test_loader)
-test_df = pd.read_csv("Data/test_metadata.csv")
+# Validation
+score = validate_model(model, device, val_loader)
+print(f"The Macro F1-score for Validation is {score}.")
 
+
+# Predictions
 label_map = {
     "SNE": 0,
     "LY": 1,
@@ -46,8 +53,8 @@ label_map = {
     "PLY": 12,
 }
 inv_label_map = {v: k for k, v in label_map.items()}
-test_df["predicted_label_idx"] = predictions
-test_df["predicted_label"] = test_df["predicted_label_idx"].map(inv_label_map)
-test_df.drop("predicted_labels_idx")
+predictions = predict_model(model, device, test_loader, inv_label_map)
+test_df = pd.read_csv(test_csv)
+test_df["label"] = predictions
 test_df.to_csv("test_prediction.csv", index=False)
 print("Model tested !")
