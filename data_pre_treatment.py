@@ -107,8 +107,14 @@ def load_data(train_df_path, test_df_path, train_data_path, test_data_path):
     )
 
     # DataLoaders
-    train_loader = DataLoader(train_set, batch_size=32, sampler=sampler)
-    val_loader = DataLoader(val_set, batch_size=32, shuffle=False)
-    test_loader = DataLoader(test_set, batch_size=32, shuffle=False)
+    train_loader = DataLoader(
+        train_set, batch_size=64, sampler=sampler, num_workers=2, pin_memory=True
+    )
+    val_loader = DataLoader(
+        val_set, batch_size=64, shuffle=False, num_workers=2, pin_memory=True
+    )
+    test_loader = DataLoader(
+        test_set, batch_size=64, shuffle=False, num_workers=2, pin_memory=True
+    )
 
     return train_loader, val_loader, test_loader

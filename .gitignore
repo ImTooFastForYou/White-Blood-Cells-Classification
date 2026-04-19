@@ -1,3 +1,8 @@
 Data/
 .git
 __pycache__
+*.png
+*.pth*
+*.csv
+*.json
+.env
